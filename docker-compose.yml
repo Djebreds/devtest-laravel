@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+    app:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        container_name: laravel_app
+        restart: unless-stopped
+        environment:
+            - APP_ENV=local
+            - APP_DEBUG=true
+            - APP_KEY=${APP_KEY}
+            - DB_CONNECTION=pgsql
+            - DB_HOST=db
+            - DB_PORT=5432
+            - DB_DATABASE=${DB_DATABASE}
+            - DB_USERNAME=${DB_USERNAME}
+            - DB_PASSWORD=${DB_PASSWORD}
+        volumes:
+            - .:/var/www/html
+            - /var/www/html/node_modules
+        depends_on:
+            - db
+        command: ["php-fpm"]
+
+    nginx:
+        image: nginx:latest
+        container_name: nginx_server
+        restart: unless-stopped
+        ports:
+            - "8000:80"
+        volumes:
+            - .:/var/www/html
+            - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+        depends_on:
+            - app
+
+    db:
+        image: postgres:17
+        container_name: postgres_db
+        restart: unless-stopped
+        environment:
+            POSTGRES_DB: ${DB_DATABASE}
+            POSTGRES_USER: ${DB_USERNAME}
+            POSTGRES_PASSWORD: ${DB_PASSWORD}
+        ports:
+            - "15432:5432"
+        volumes:
+            - pgdata:/var/lib/postgresql/data
+
+    bun:
+        image: oven/bun
+        container_name: bun_builder
+        working_dir: /app
+        volumes:
+            - .:/app
+            - /app/node_modules
+        command: ["bun", "install"]
+
+volumes:
+    pgdata:
